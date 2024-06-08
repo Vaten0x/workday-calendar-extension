@@ -115,7 +115,7 @@ window.onload = function () {
     const customEvent = event as CustomEvent<{ enabled: boolean }>;
     isAutofillEnabled = customEvent.detail.enabled;
     if (
-      isAutofillEnabled //&& shouldAutoFill
+      isAutofillEnabled //&& shouldAutoFillwef
     ) {
       observePopup();
     }
