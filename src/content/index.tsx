@@ -2,6 +2,7 @@ import { extractSection } from './utils';
 import ReactDOM from 'react-dom';
 import '../index.css';
 import App from './App/App';
+import { doc } from 'prettier';
 
 function waitForElm(selector: string): Promise<Element | null> {
   return new Promise((resolve) => {
@@ -128,6 +129,99 @@ window.onload = function () {
   }
 };
 
+
+// Function to observe DOM changes and add buttons to matching elements
+function observeDOMAndAddCopySavedScheduleButton(): void {
+  // Configuration for the mutation observer
+  const config: MutationObserverInit = {
+    childList: true,
+    subtree: true,
+    attributes: false,
+  };
+
+  // Callback function for the mutation observer
+  const callback: MutationCallback = (mutationsList, observer) => {
+    mutationsList.forEach((mutation) => {
+      if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+        mutation.addedNodes.forEach((node) => {
+          if (node instanceof Element) {
+            // Finding matching elements within the added node
+            const matchingElements = node.querySelectorAll(
+              '[data-automation-id="decorationWrapper"][id="56$381809"] > div'
+            ); // last time buttons gone, this selector broke
+            // Adding buttons to matching elements
+            matchingElements.forEach((matchingElement) => {
+              // Check if the element already has a button as a previous sibling
+              const previousSibling = matchingElement.previousElementSibling;
+              const isButtonAlreadyPresent =
+                previousSibling && previousSibling.id === 'add-section-button';
+
+              if (!isButtonAlreadyPresent) {
+                addCopySavedScheduleButton(matchingElement);
+              }
+            });
+          }
+        });
+      }
+    });
+  };
+
+  // Creating a new mutation observer instance
+  const observer: MutationObserver = new MutationObserver(callback);
+  // Observing changes to the document body with the specified configuration
+  observer.observe(document.body, config);
+}
+
+
+// Function to add a button to a given HTML element
+function addCopySavedScheduleButton(element: Element): void {
+  // Creating a button element
+  const button: HTMLButtonElement = document.createElement('button');
+  // Setting the button text content
+  button.textContent = 'Copy saved schedule into extension';
+  // Add custom button id
+  button.id = 'add-schedule-button';
+  // Adding an event listener for when the button is clicked
+  button.addEventListener('click', () => {
+    handleButtonClick(element);
+  });
+
+  // Styling the button
+  button.style.padding = '10px 20px';
+  button.style.fontSize = '14px';
+  button.style.color = '#fff';
+  button.style.backgroundColor = '#007bff'; // Blue color
+  button.style.boxShadow = '0 0 0 1px #0056b3';
+  button.style.cursor = 'pointer';
+  button.style.marginLeft = '10px';
+  button.style.borderRadius = '5px';
+  button.style.transition = 'all 120ms ease-in';
+  button.style.border = 'none';
+  button.style.outline = 'none';
+  button.style.textAlign = 'center'; // Center the text horizontally
+
+  // Adding display flex and align-items center to the button's parent
+  const parentElement = element.parentElement;
+  if (parentElement) {
+    parentElement.style.display = 'flex';
+    parentElement.style.alignItems = 'center';
+  }
+
+  // Adding event listeners for mouse enter and leave to change button style
+  button.addEventListener('mouseenter', () => {
+    button.style.backgroundColor = '#0056b3';
+    button.style.boxShadow = '0 0 0 1px #004085';
+  });
+
+  button.addEventListener('mouseleave', () => {
+    button.style.backgroundColor = '#007bff';
+    button.style.boxShadow = '0 0 0 1px #0056b3';
+  });
+
+  // Inserting the button after the given element
+  element.parentNode?.insertBefore(button, element.nextSibling);
+}
+
 // Function to add a button to a given HTML element
 function addButtonToElement(element: Element): void {
   // Creating a button element
@@ -235,9 +329,11 @@ function setupObserver(): void {
   // If the document is still loading, add an event listener to observe DOM changes
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', observeDOMAndAddButtons);
+    document.addEventListener('DOMContentLoaded', observeDOMAndAddCopySavedScheduleButton);
   } else {
     // Directly observe DOM changes
     observeDOMAndAddButtons();
+    observeDOMAndAddCopySavedScheduleButton();
   }
 }
 
