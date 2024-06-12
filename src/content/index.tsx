@@ -4,81 +4,112 @@ import '../index.css';
 import App from './App/App';
 import { doc } from 'prettier';
 
-function waitForElm(selector: string): Promise<Element | null> {
-  return new Promise((resolve) => {
-    if (document.querySelector(selector)) {
-      return resolve(document.querySelector(selector));
-    }
 
-    const observer = new MutationObserver((mutations) => {
-      if (document.querySelector(selector)) {
-        observer.disconnect();
-        resolve(document.querySelector(selector));
-      }
-    });
+// Function to apply visibility based on stored settings
+function applyVisibility(hide: boolean): void {
+  //console.log('hide? ', hide);
 
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-    });
+  const selectors = [
+    'img.wdappchrome-aax',
+    'img.wdappchrome-aaam',
+    'img.gwt-Image.WN0P.WF5.WO0P.WJ0P.WK0P.WIEW'
+  ];
+
+  const profilePictures = document.querySelectorAll(selectors.join(', '));
+  profilePictures.forEach((img) => {
+    (img as HTMLImageElement).style.visibility = hide ? 'hidden' : 'visible';
   });
 }
 
-function waitForElms(
-  selector: string,
-  numEls: number
-): Promise<NodeListOf<Element> | null> {
+// Function to set up a MutationObserver
+function observeMutations(hide: boolean): void {
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      mutation.addedNodes.forEach((node) => {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          const element = node as HTMLElement;
+          if (element.matches('img.wdappchrome-aax, img.wdappchrome-aaam, img.gwt-Image.WN0P.WF5.WO0P.WJ0P.WK0P.WIEW')) {
+            (element as HTMLImageElement).style.visibility = hide ? 'hidden' : 'visible';
+          }
+          const nestedImages = element.querySelectorAll('img.wdappchrome-aax, img.wdappchrome-aaam, img.gwt-Image.WN0P.WF5.WO0P.WJ0P.WK0P.WIEW');
+          nestedImages.forEach((img) => {
+            (img as HTMLImageElement).style.visibility = hide ? 'hidden' : 'visible';
+          });
+        }
+      });
+    });
+  });
+
+  observer.observe(document.body, { childList: true, subtree: true });
+}
+
+// Function to initialize and set up event listeners
+function initializePfpVisibility() {
+  // Run applyVisibility on initialization
+  const hideProfilePicture = localStorage.getItem('hideProfilePicture') === 'true';
+  applyVisibility(hideProfilePicture);
+
+  // Set up a custom event listener for changes in local storage
+  window.addEventListener('hideProfilePictureToggle', (event: any) => {
+    const hide = event.detail.enabled;
+    applyVisibility(hide);
+  });
+
+  // Set up MutationObserver
+  observeMutations(hideProfilePicture);
+}
+
+// Call the initialize function when the content script is loaded
+initializePfpVisibility();
+
+function waitForElm(selector: string, index: number) {
   return new Promise((resolve) => {
     const existingElements = document.querySelectorAll(selector);
-    if (existingElements.length >= numEls) {
-      resolve(existingElements);
-      return;
+    if (existingElements.length > index) {
+      return resolve(existingElements[index]);
     }
-
-    const observer = new MutationObserver((mutations) => {
-      const newElements = document.querySelectorAll(selector);
-      if (newElements.length >= numEls) {
+    const observer = new MutationObserver(mutations => {
+      const existingElements = document.querySelectorAll(selector);
+      if (existingElements.length > index) {
         observer.disconnect();
-        resolve(newElements);
+        resolve(existingElements[index]);
       }
     });
-
     observer.observe(document.body, {
       childList: true,
-      subtree: true,
+      subtree: true
     });
   });
 }
 
-async function waitAndClick(selector: string) {
-  let element = await waitForElm(selector);
-  (element as HTMLElement).click();
+function waitAndClick(selector: string, index: number = 0): Promise<void> {
+  return waitForElm(selector, index).then((element) => {
+    (element as HTMLElement).click();
+  });
 }
 
-// Function to select the "Start Date within" dropdown
+// Function to autofill the menus in "Find Course Sections"
 async function startAutoFill() {
-  const dropDowns = await waitForElms(
-    '[data-automation-id="multiselectInputContainer"] input',
-    2
-  );
-  if (dropDowns) {
-    (dropDowns[0] as HTMLElement).click(); // open time dropdown
-    await waitAndClick(
-      '[data-automation-id="promptOption"][data-automation-label="Future Periods"]'
-    );
-    await waitAndClick('[data-automation-label="2024-25 UBC-V Academic Year"]'); // select UBC V
-    await waitAndClick(
-      '[data-automation-id="promptOption"][data-automation-label="2024-25 Winter Term 1 (UBC-V) (2024-09-03-2024-12-06)"]'
-    ); // select Winter Term 1
-    await waitAndClick(
-      '[data-automation-id="promptOption"][data-automation-label="2024-25 Winter Term 2 (UBC-V) (2025-01-06-2025-04-08)"]'
-    ); // select Winter Term 2
-    (dropDowns[1] as HTMLElement).click(); // open level dropdown
-    await waitAndClick('[data-automation-label="Undergraduate"]'); // select Undergraduate
-  }
+  console.log('Starting autofill...');
+
+  waitAndClick('[data-uxi-widget-type="selectinputicon"]', 0) // open start date dropdown
+  .then(() => waitAndClick('[data-automation-label="Future Periods"]')) // select future periods
+  .then(() => waitAndClick('[data-automation-label="2024-25 UBC-V Academic Year"]')) // select UBC V
+  .then(() => waitAndClick('[data-automation-label="2024-25 Winter Term 1 (UBC-V) (2024-09-03-2024-12-06)"]')) // select Winter Term 1
+  .then(() => waitAndClick('[data-automation-label="2024-25 Winter Term 2 (UBC-V) (2025-01-06-2025-04-08)"]')) // select Winter Term 2
+  .then(() => waitAndClick('[data-automation-id="promptSearchButton"]', 0)) // close start date dropdown
+  .then(() => console.log('Autofilling start date complete'));
+
+  waitAndClick('[data-automation-id="multiselectInputContainer"]', 1) // open level dropdown
+  .then(() => waitAndClick('[data-automation-label="Undergraduate"]')) // select Undergraduate
+  .then(() => waitAndClick('[data-automation-id="promptSearchButton"]', 1)) // close level dropdown
+  .then(() => console.log('Autofilling academic level complete'));
 }
 
-// Observe the DOM for the popup appearance
+let isAutofillEnabled = localStorage.getItem('autofillEnabled') === 'true';
+let hasAlreadyAutofilled = false;
+
+// Observe the DOM for the "Find Course Sections" popup
 function observePopup() {
   const observer = new MutationObserver((mutationsList, observer) => {
     mutationsList.forEach((mutation) => {
@@ -88,7 +119,9 @@ function observePopup() {
             const popup = node.querySelector(
               '[data-automation-id="editPopup"] [data-automation-id="pageHeaderTitleText"]'
             );
-            if (popup && isAutofillEnabled && !isAutofillTemporarilyDisabled) {
+            const isCourseSectionsPage = document.title === "Find Course Sections - Workday";
+            if (popup && isCourseSectionsPage && !hasAlreadyAutofilled) {
+              hasAlreadyAutofilled = true;
               startAutoFill();
               observer.disconnect(); // Stop observing after the popup is found and autofill is triggered
             }
@@ -101,33 +134,12 @@ function observePopup() {
   observer.observe(document.body, { childList: true, subtree: true });
 }
 
-let isAutofillEnabled = false;
-let isAutofillTemporarilyDisabled = false;
-//let shouldAutoFill = false;
-
 window.onload = function () {
-  //console.log('Window loaded');
-
-  //shouldAutoFill = true;
-
-  isAutofillEnabled = localStorage.getItem('autofillEnabled') === 'true';
-
-  window.addEventListener('autofillToggle', function (event) {
-    const customEvent = event as CustomEvent<{ enabled: boolean }>;
-    isAutofillEnabled = customEvent.detail.enabled;
-    if (
-      isAutofillEnabled //&& shouldAutoFillwef
-    ) {
-      observePopup();
-    }
-  });
-
-  if (
-    isAutofillEnabled //&& shouldAutoFill
-  ) {
+  if (isAutofillEnabled) {
     observePopup();
   }
 };
+
 
 // Function to add a button to a given HTML element
 function addButtonToElement(element: Element): void {
@@ -150,6 +162,10 @@ function addButtonToElement(element: Element): void {
   button.style.boxShadow = '0 0 0 1px #CED3D9';
   button.style.cursor = 'pointer';
   button.style.marginRight = '10px';
+  if (element.previousElementSibling &&
+      element.previousElementSibling.getAttribute('data-automation-id') === 'checkbox') {
+    button.style.marginLeft = '24px';
+  }
   button.style.borderRadius = '5px';
   button.style.transition = 'all 120ms ease-in';
   button.style.border = 'none';
@@ -206,16 +222,17 @@ function observeDOMAndAddButtons(): void {
           if (node instanceof Element) {
             // Finding matching elements within the added node
             const matchingElements = node.querySelectorAll(
-              '[data-automation-id="compositeContainer"] > div'
+                '[data-automation-id="compositeContainer"] > div'
             ); // last time buttons gone, this selector broke
             // Adding buttons to matching elements
             matchingElements.forEach((matchingElement) => {
               // Check if the element already has a button as a previous sibling
               const previousSibling = matchingElement.previousElementSibling;
               const isButtonAlreadyPresent =
-                previousSibling && previousSibling.id === 'add-section-button';
+                  previousSibling && previousSibling.id === 'add-section-button';
+              const isCourseInfo = matchingElement.getAttribute('class') === 'WMUF WKUF';
 
-              if (!isButtonAlreadyPresent) {
+              if (!isButtonAlreadyPresent && isCourseInfo) {
                 addButtonToElement(matchingElement);
               }
             });
@@ -291,12 +308,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 setupObserver();
 
-// document.addEventListener('DOMContentLoaded', function () {
 // Read the initial state from storage and adjust UI accordingly
 chrome.storage.local.get('drawerOpen', function (data) {
-  // if (!data.drawerOpen) {
-  //   toggleContainer(false);
-  // }
   const containerWrapper = document.createElement('div');
   containerWrapper.style.position = 'fixed';
   containerWrapper.style.top = '50%'; // Center vertically
@@ -327,7 +340,7 @@ chrome.storage.local.get('drawerOpen', function (data) {
   const container = document.createElement('div');
   container.id = 'react-container';
   container.style.width = '300px';
-  container.style.height = '650px';
+  container.style.height = '700px';
   container.style.border = '1px solid #CCC';
   container.style.backgroundColor = '#FFF';
   container.style.overflow = 'auto';

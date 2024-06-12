@@ -77,8 +77,20 @@ const parseSectionDetails = (details: string[]): SectionDetail[] => {
     }, []);
 
     //@TODO: Change for summer term support
-    const term = dateRange.includes('2024') ? Term.winterOne : Term.winterTwo
-  
+    let term = dateRange.includes('2024') ? Term.winterOne : Term.winterTwo; 
+    if (dateRange.includes('2024') && dateRange.includes('2025')) {
+      // Case where only one section detail but two term course. Set this term to W1 and push a copy modified to be term 2
+      term = Term.winterOne
+      detailsArr.push({
+        term: Term.winterTwo,
+        days: days,
+        startTime: startTime,
+        endTime: endTime,
+        location: location,
+        dateRange: dateRange
+      })
+    }
+    
     detailsArr.push({
       term: term,
       days: days,
@@ -170,7 +182,7 @@ export async function extractSection(element: Element) {
   // ~~~ End of stupidly hacky code ~~~
 
   // Extracting instructors details from labels
-  const instructorElements = element.parentElement?.querySelectorAll('[data-automation-id="promptOption"]');
+  const instructorElements = element.querySelectorAll('[data-automation-id="promptOption"]');
   let instructors: string[] = [];
   
   if(instructorElements) {
@@ -182,6 +194,9 @@ export async function extractSection(element: Element) {
     }
   }
 
+  // Extract Course ID
+  const courseID = findCourseId(element);
+  
   //Find all the sectionDetails elements, turn to an array, and then join them all into one string that contains all the sectionDetails
   sectionDetailsElements = element.querySelectorAll('[data-automation-id="promptOption"][data-automation-label*="|"][role="link"]')
   //can slice first element because it should be duplicate. The first elem is from non-expand sectionDetails
@@ -201,8 +216,26 @@ export async function extractSection(element: Element) {
     term: term,
     sectionDetails: sectionDetailsArr,
     worklistNumber: 0,
-    color: defaultColorList[0]
+    color: defaultColorList[0],
+    courseID: courseID
   };
 
   return newSection;
+}
+
+function findCourseId(element: Element) {
+  const dataAutomationIds: string[] = [];
+  const elements = element.parentElement?.querySelectorAll("[data-automation-id^='selectedItem_15194$']");
+  
+  if (elements) {
+    elements.forEach(element => {
+      const dataAutomationId = (element as HTMLElement).dataset.automationId;
+      if(dataAutomationId) {
+        dataAutomationIds.push(dataAutomationId);
+      }
+    }); 
+  }
+  const dataAutomationId = dataAutomationIds[0].split("$")[1]
+
+  return dataAutomationId
 }

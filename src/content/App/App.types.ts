@@ -36,7 +36,7 @@ export type SectionDetail = {
     startTime: string,
     endTime: string,
     location?: string,
-    dateRange: string
+    dateRange: string   
 }
 
 export interface ISectionData {
@@ -48,17 +48,5 @@ export interface ISectionData {
     term: Term,
     worklistNumber: number,
     color: string
-    // details: string,
-    // title: string,
-}
-
-export const baseSection:ISectionData = {
-    code: "",
-    name: "",
-    instructors: [],
-    type: SectionType.lecture,
-    sectionDetails: [],
-    term: Term.winterOne,
-    worklistNumber: 0,
-    color: defaultColorList[0]
+    courseID?: string
 }

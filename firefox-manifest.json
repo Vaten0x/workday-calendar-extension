@@ -10,7 +10,7 @@
     "128": "logo128.png"
   },
   "background": {
-    "service_worker": "static/js/background.js"
+    "scripts": ["static/js/background.js"]
   },
   "content_scripts": [
     {
@@ -26,5 +26,10 @@
     }
   ],
   "action": {},
-  "permissions": ["storage"]
+  "permissions": ["storage", "tabs", "activeTab"],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "WorkdayCalendarExtension@students.ubc.ca"
+    }
+  }
 }
