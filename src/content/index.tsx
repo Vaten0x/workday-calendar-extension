@@ -2,8 +2,7 @@ import { extractSection } from './utils';
 import ReactDOM from 'react-dom';
 import '../index.css';
 import App from './App/App';
-import { doc } from 'prettier';
-
+import { time } from 'console';
 
 // Function to apply visibility based on stored settings
 function applyVisibility(hide: boolean): void {
@@ -373,35 +372,34 @@ function observeDOMAndAddCopySavedScheduleButton(): void {
 
   const callback: MutationCallback = (mutationsList, observer) => {
     mutationsList.forEach((mutation) => {
-      if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+      if (mutation.addedNodes.length > 0) {
         mutation.addedNodes.forEach((node) => {
           if (node instanceof Element) {
 
             // These are the rows for each course in the schedule that needs to be added onto the extension
-            const matchingElements = node.querySelectorAll(
-              '[data-testid="row"] > div'
+            const matchingElement = node.querySelector( //this only works for <li> class attributes to select them, but its specific ones part of the row
+              '[role="presentation"]' //this selects the course name only, doesnt do anything else
             );
-
+            
             // Where the button will be added
             const forAddingButton = node.querySelector(
               '[data-automation-id="decorationWrapper"][id="56$381809"] > div'
             );
 
-            if (forAddingButton) {
-              addCopySavedScheduleButton(matchingElements, forAddingButton);
+            if (forAddingButton && matchingElement) {
+              addCopySavedScheduleButton(matchingElement, forAddingButton);
             }
           }
         });
       }
     });
-  };
-
+  };  
   const observer: MutationObserver = new MutationObserver(callback);
   observer.observe(document.body, config);
 }
 
 // Function to add a button to a given HTML element
-function addCopySavedScheduleButton(element: NodeListOf<Element>, buttonElement: Element): void {
+function addCopySavedScheduleButton(element: Element, buttonElement: Element): void {
   // Creating a button element
   const button: HTMLButtonElement = document.createElement('button');
   // Setting the button text content
@@ -410,6 +408,10 @@ function addCopySavedScheduleButton(element: NodeListOf<Element>, buttonElement:
   button.id = 'add-schedule-button';
   // Adding an event listener for when the button is clicked
   button.addEventListener('click', () => {
+    if (element === null) {
+      alert('No saved schedule found');
+      return;
+    }
     handleCopySavedScheduleButtonClick(element);
   });
 
@@ -449,14 +451,17 @@ function addCopySavedScheduleButton(element: NodeListOf<Element>, buttonElement:
   buttonElement.parentNode?.insertBefore(button, buttonElement.nextSibling);
 }
 
-async function handleCopySavedScheduleButtonClick(element: NodeListOf<Element>): Promise<void> {
+async function handleCopySavedScheduleButtonClick(element: Element): Promise<void> {
 
-  for (let i = 0; i < element.length; i++) {
-    const selectedSection = await extractSection(element[i]);
-    if (!selectedSection) return;
-    // Getting existing sections from Chrome storage and adding the new section
-    chrome.storage.sync.set({ newSection: selectedSection });
-  }
+  // for (let i = 0; i < element.length; i++) {
+  //   const selectedSection = await extractSection(element[0]);
+
+  //   alert(selectedSection); //test
+
+  //   if (!selectedSection) return;
+  //   // Getting existing sections from Chrome storage and adding the new section
+  //   chrome.storage.sync.set({ newSection: selectedSection });
+  // }
 
   // Ensure the drawer opens when a button is clicked
   toggleContainer(true);
